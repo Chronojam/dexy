@@ -19,27 +19,27 @@ release: github-release
 	@git tag -a $(VERSION) -m "Version $(VERSION)"
 	@git push --tags
 	@$(GITHUB_RELEASE) release \
-		--user chronojam
+		--user chronojam \
 		--repo dexy \
 		--tag $(VERSION) \
 		--name "dexy-$(VERSION)" \
 		--description ""
 
-	@$(GITHUB_RELEASE) upload \
+	@$(GITHUB_RELEASE) upload -R \
 		--user chronojam \
 		--repo dexy \
 		--tag $(VERSION) \
 		--name "linux-amd64" \
 		--file .build/linux-amd64/dexy
 
-	@$(GITHUB_RELEASE) upload \
+	@$(GITHUB_RELEASE) upload -R \
 		--user chronojam \
 		--repo dexy \
 		--tag $(VERSION) \
 		--name "darwin-amd64" \
 		--file .build/darwin-amd64/dexy
 
-	@$(GITHUB_RELEASE) upload \
+	@$(GITHUB_RELEASE) upload -R \
 		--user chronojam \
 		--repo dexy \
 		--tag $(VERSION) \
