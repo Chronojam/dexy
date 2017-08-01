@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"github.com/coreos/go-oidc"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/pkg/browser"
 	"github.com/pressly/chi"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -79,13 +80,16 @@ to quickly create a Cobra application.`,
 			Endpoint:     provider.Endpoint(),
 			Scopes:       []string{oidc.ScopeOpenID, "groups", "email"},
 		}
-		tokenChan := make(chan oauth2.Token)
+		tokenChan := make(chan *oauth2.Token)
 		w := &web{
 			cfg:       oauth2Config,
 			tokenChan: tokenChan,
 		}
 
-		fmt.Println(oauth2Config.AuthCodeURL(""))
+		err = browser.OpenURL(oauth2Config.AuthCodeURL(""))
+		if err != nil {
+			panic(err)
+		}
 		go w.Serve()
 		tok := <-tokenChan
 
@@ -105,7 +109,7 @@ to quickly create a Cobra application.`,
 
 type web struct {
 	cfg       oauth2.Config
-	tokenChan chan oauth2.Token
+	tokenChan chan *oauth2.Token
 }
 
 func (s *web) Serve() {
@@ -134,6 +138,9 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	s.tokenChan <- oauth2Token
+
+	fmt.Fprintf(w, "Done, you can now close this window")
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
