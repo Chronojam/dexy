@@ -23,6 +23,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -43,13 +44,8 @@ var cfgFile string
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
 	Use:   "dexy",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "",
+	Long:  `Dexy is a simple application used to grab an oauth2 token from a provider`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
@@ -59,10 +55,11 @@ to quickly create a Cobra application.`,
 			// Check if expiry is what we expect.
 			err = json.Unmarshal(b, tok)
 			if err != nil {
-				panic(err)
+				log.Fatalf("error while unmarshalling token from file %v", err)
 			}
 
 			if !tok.Expiry.Before(time.Now()) {
+				// We've not expired, so just return the token from the file.
 				fmt.Println(string(b))
 				return
 			}
@@ -71,7 +68,7 @@ to quickly create a Cobra application.`,
 		// Our token has either expired or doesnt exist.
 		provider, err := oidc.NewProvider(context.Background(), viper.GetString("auth.dex_host"))
 		if err != nil {
-			panic(err)
+			log.Fatalf("error while creating new oidc provider %v", err)
 		}
 		oauth2Config := oauth2.Config{
 			ClientID:     viper.GetString("auth.client_id"),
@@ -88,19 +85,19 @@ to quickly create a Cobra application.`,
 
 		err = browser.OpenURL(oauth2Config.AuthCodeURL(""))
 		if err != nil {
-			panic(err)
+			log.Fatalf("error while opening new web browser %v", err)
 		}
 		go w.Serve()
 		tok := <-tokenChan
 
 		b, err = json.Marshal(tok)
 		if err != nil {
-			panic(err)
+			log.Fatalf("error while marshalling token from provider %v", err)
 		}
 
 		err = ioutil.WriteFile(viper.GetString("token_file"), b, 0755)
 		if err != nil {
-			panic(err)
+			log.Fatalf("error while attempting to write token to file %v", err)
 		}
 
 		fmt.Println(string(b))
@@ -127,16 +124,11 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 
 	oauth2Token, err := s.cfg.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
-		panic(err)
+		log.Fatalf("error while attempting initial token exchange %v", err)
 	}
 	b, err := json.Marshal(oauth2Token)
 	if err != nil {
-		panic(err)
-	}
-	// If we get this far, just write our token out to our file.
-	err = ioutil.WriteFile(viper.GetString("token_file"), b, 0755)
-	if err != nil {
-		panic(err)
+		log.Fatalf("error while marshalling token %v", err)
 	}
 	s.tokenChan <- oauth2Token
 

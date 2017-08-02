@@ -1,0 +1,7 @@
+auth:
+  dex_host: "https://dex.mycompany.com"
+  callback_host: "localhost"
+  callback_port: 10111
+  # This will generate a callbackurl like http://localhost:10111/oauth2/callback
+  client_id: "dexy"
+  client_secret: "dexy-secret"
