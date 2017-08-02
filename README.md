@@ -1,10 +1,11 @@
 **Dexy**
-----
 ----------
-**Introduction**
+**Introduction**    
+
 Dexy is a simple command line tool to do 3LO authentication with an external provider and give a token back.
 
-**Usage**
+**Usage**    
+
 Dexy works on client_id/client_secret  pairs.
 As such you'll need to generate one and authorize it with your provider. In [dex](https://github.com/coreos/dex) this might look like this:
 
@@ -36,7 +37,8 @@ auth:
 
 It can only support a single provider at a time, if you need to change providers, you can delete the dexy token file in ~/.dexy-token.yaml
 
-**Building**
+**Building**    
+
 Pretty self explainatory but
 ```
 make test
@@ -45,5 +47,6 @@ make build
 Will drop the compiled binaries under .build/
 ```
 
-**Contributing**
+**Contributing**    
+
 All PR's are welcome, just open one aganist master
