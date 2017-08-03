@@ -1,10 +1,6 @@
 PKGS = $(shell go list ./... | grep -v /vendor/ | grep -v /test/)
 VERSION = $(shell cat VERSION)
-PROMU := $(GOPATH)/bin/promu
 GITHUB_RELEASE := $(GOPATH)/bin/github-release
-
-build: promu
-	@$(PROMU) build --prefix $(shell pwd)
 
 crossbuild:
 	@GOOS=linux GOARCH=amd64 go build -o .build/linux-amd64/dexy ./cmd
@@ -48,6 +44,3 @@ release: github-release
 
 github-release:
 	@go get -u github.com/aktau/github-release
-
-promu:
-	@go get -u github.com/prometheus/promu
