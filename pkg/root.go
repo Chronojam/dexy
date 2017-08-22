@@ -126,10 +126,10 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("error while attempting initial token exchange %v", err)
 	}
-	b, err := json.Marshal(oauth2Token)
-	if err != nil {
-		log.Fatalf("error while marshalling token %v", err)
-	}
+	//_, err = json.Marshal(oauth2Token)
+	//if err != nil {
+	//	log.Fatalf("error while marshalling token %v", err)
+	//}
 	s.tokenChan <- oauth2Token
 
 	fmt.Fprintf(w, "Done, you can now close this window")
@@ -184,9 +184,8 @@ func initConfig() {
 	viper.SetDefault("token_file", home+"/.dexy-token.yaml")
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	//if err := viper.ReadInConfig(); err == nil {
+	//}
 	viper.Set("auth.callback_url", fmt.Sprintf("http://%s:%d/oauth2/callback",
 		viper.GetString("auth.callback_host"),
 		viper.GetInt("auth.callback_port")))
