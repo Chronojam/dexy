@@ -184,8 +184,8 @@ func initConfig() {
 	viper.SetDefault("token_file", home+"/.dexy-token.yaml")
 
 	// If a config file is found, read it in.
-	//if err := viper.ReadInConfig(); err == nil {
-	//}
+	if err := viper.ReadInConfig(); err == nil {
+	}
 	viper.Set("auth.callback_url", fmt.Sprintf("http://%s:%d/oauth2/callback",
 		viper.GetString("auth.callback_host"),
 		viper.GetInt("auth.callback_port")))
