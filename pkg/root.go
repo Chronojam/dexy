@@ -77,8 +77,10 @@ var RootCmd = &cobra.Command{
 			Endpoint:     provider.Endpoint(),
 			Scopes:       []string{oidc.ScopeOpenID, "groups", "email"},
 		}
-		tokenChan := make(chan *oauth2.Token)
+
+		tokenChan := make(chan *returnToken)
 		w := &web{
+			verifier: provider.Verifier(&oidc.Config{ClientID: viper.GetString("auth.client_id")}),
 			cfg:       oauth2Config,
 			tokenChan: tokenChan,
 		}
@@ -104,9 +106,15 @@ var RootCmd = &cobra.Command{
 	},
 }
 
+type returnToken struct {
+	AccessToken	string	`json:"access_token"`
+	ExpiryTime	time.Time `json:"expiry_time"`
+}
+
 type web struct {
+	verifier  *oidc.IDTokenVerifier 
 	cfg       oauth2.Config
-	tokenChan chan *oauth2.Token
+	tokenChan chan *returnToken
 }
 
 func (s *web) Serve() {
@@ -126,11 +134,25 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("error while attempting initial token exchange %v", err)
 	}
-	//_, err = json.Marshal(oauth2Token)
-	//if err != nil {
-	//	log.Fatalf("error while marshalling token %v", err)
-	//}
-	s.tokenChan <- oauth2Token
+
+	// Extract the ID Token from OAuth2 token.
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok {
+	  // handle missing token
+	}
+
+	// Parse and verify ID Token payload.
+	idToken, err := s.verifier.Verify(ctx, rawIDToken)
+	if err != nil {
+		fmt.Println(err.Error())
+	  // handle error
+	}
+
+	ret := &returnToken{
+		AccessToken: rawIDToken,
+		ExpiryTime: idToken.Expiry,
+	}
+	s.tokenChan <- ret
 
 	fmt.Fprintf(w, "Done, you can now close this window")
 }
