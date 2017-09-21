@@ -161,6 +161,9 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	browser.Stdout = ioutil.Discard
+	browser.Stderr = ioutil.Discard
+
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
