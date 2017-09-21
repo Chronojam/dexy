@@ -28,6 +28,9 @@ import (
 	"time"
 
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/coreos/go-oidc"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/browser"
@@ -35,8 +38,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/oauth2"
-	"io/ioutil"
-	"net/http"
 )
 
 var cfgFile string
@@ -51,21 +52,21 @@ var RootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		b, err := ioutil.ReadFile(viper.GetString("token_file"))
 		if err == nil {
-			tok := &oauth2.Token{}
 			// Check if expiry is what we expect.
-			err = json.Unmarshal(b, tok)
+			var tok returnToken
+			err = json.Unmarshal(b, &tok)
 			if err != nil {
 				log.Fatalf("error while unmarshalling token from file %v", err)
 			}
 
-			if !tok.Expiry.Before(time.Now()) {
+			if tok.ExpiryTime.After(time.Now()) {
 				// We've not expired, so just return the token from the file.
 				fmt.Println(string(b))
 				return
 			}
 		}
 
-		// Our token has either expired or doesnt exist.
+		// Our token has either expired or doesn't exist.
 		provider, err := oidc.NewProvider(context.Background(), viper.GetString("auth.dex_host"))
 		if err != nil {
 			log.Fatalf("error while creating new oidc provider %v", err)
@@ -80,7 +81,7 @@ var RootCmd = &cobra.Command{
 
 		tokenChan := make(chan *returnToken)
 		w := &web{
-			verifier: provider.Verifier(&oidc.Config{ClientID: viper.GetString("auth.client_id")}),
+			verifier:  provider.Verifier(&oidc.Config{ClientID: viper.GetString("auth.client_id")}),
 			cfg:       oauth2Config,
 			tokenChan: tokenChan,
 		}
@@ -107,12 +108,12 @@ var RootCmd = &cobra.Command{
 }
 
 type returnToken struct {
-	AccessToken	string	`json:"access_token"`
-	ExpiryTime	time.Time `json:"expiry_time"`
+	AccessToken string    `json:"access_token"`
+	ExpiryTime  time.Time `json:"expiry_time"`
 }
 
 type web struct {
-	verifier  *oidc.IDTokenVerifier 
+	verifier  *oidc.IDTokenVerifier
 	cfg       oauth2.Config
 	tokenChan chan *returnToken
 }
@@ -138,19 +139,19 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	// Extract the ID Token from OAuth2 token.
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-	  // handle missing token
+		// handle missing token
 	}
 
 	// Parse and verify ID Token payload.
 	idToken, err := s.verifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		fmt.Println(err.Error())
-	  // handle error
+		// handle error
 	}
 
 	ret := &returnToken{
 		AccessToken: rawIDToken,
-		ExpiryTime: idToken.Expiry,
+		ExpiryTime:  idToken.Expiry,
 	}
 	s.tokenChan <- ret
 
@@ -160,6 +161,9 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	browser.Stdout = ioutil.Discard
+	browser.Stderr = ioutil.Discard
+
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
