@@ -31,6 +31,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/chronojam/dexy/pkg/providers"
 	"github.com/coreos/go-oidc"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/pkg/browser"
@@ -67,26 +68,32 @@ var RootCmd = &cobra.Command{
 		}
 
 		// Our token has either expired or doesn't exist.
-		provider, err := oidc.NewProvider(context.Background(), viper.GetString("auth.dex_host"))
+		provider, err := oidc.NewProvider(context.Background(), viper.GetString("identity_host"))
 		if err != nil {
 			log.Fatalf("error while creating new oidc provider %v", err)
 		}
 		oauth2Config := oauth2.Config{
-			ClientID:     viper.GetString("auth.client_id"),
-			ClientSecret: viper.GetString("auth.client_secret"),
-			RedirectURL:  viper.GetString("auth.callback_url"),
+			ClientID:     C.GetClientID(),
+			ClientSecret: C.GetClientSecret(), //viper.GetString("client_secret"),
+			RedirectURL:  C.GetCallbackURL(),  //viper.GetString("callback_url"),
 			Endpoint:     provider.Endpoint(),
-			Scopes:       []string{oidc.ScopeOpenID, "groups", "email"},
+			Scopes:       append([]string{oidc.ScopeOpenID, "email", "profile"}, viper.GetStringSlice("auth.scopes")...),
 		}
 
 		tokenChan := make(chan *returnToken)
 		w := &web{
-			verifier:  provider.Verifier(&oidc.Config{ClientID: viper.GetString("auth.client_id")}),
+			verifier:  provider.Verifier(&oidc.Config{ClientID: C.GetClientID()}),
 			cfg:       oauth2Config,
 			tokenChan: tokenChan,
 		}
 
-		err = browser.OpenURL(oauth2Config.AuthCodeURL(""))
+		var authCodeURL string = oauth2Config.AuthCodeURL("")
+
+		// if googleApps, ok := C.(providers.GoogleApps); ok {
+		// 	authCodeURL += fmt.Sprintf("&hd=%s", googleApps.HD)
+		// }
+
+		err = browser.OpenURL(authCodeURL)
 		if err != nil {
 			log.Fatalf("error while opening new web browser %v", err)
 		}
@@ -116,6 +123,7 @@ type web struct {
 	verifier  *oidc.IDTokenVerifier
 	cfg       oauth2.Config
 	tokenChan chan *returnToken
+	provider  *string
 }
 
 func (s *web) Serve() {
@@ -130,7 +138,6 @@ func (s *web) Serve() {
 
 func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
 	oauth2Token, err := s.cfg.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
 		log.Fatalf("error while attempting initial token exchange %v", err)
@@ -149,6 +156,8 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 		// handle error
 	}
 
+	// C.Finalise()
+
 	ret := &returnToken{
 		AccessToken: rawIDToken,
 		ExpiryTime:  idToken.Expiry,
@@ -156,6 +165,7 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	s.tokenChan <- ret
 
 	fmt.Fprintf(w, "Done, you can now close this window")
+	// }
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -179,6 +189,13 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dexy.yaml)")
 }
 
+var C providers.Config
+
+var destinations = []providers.IProvider{
+	providers.BaseProvider{},
+	providers.GoogleApps{},
+}
+
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	// Find home directory.
@@ -200,19 +217,26 @@ func initConfig() {
 	}
 	viper.SetEnvPrefix("dexy")
 	viper.AutomaticEnv() // read in environment variables that match
-	viper.SetDefault("auth", map[string]interface{}{
-		"dex_host":      "http://localhost:9999",
-		"callback_host": "localhost",
-		"callback_port": 10111,
-		"client_id":     "dexy",
-		"client_secret": "dexy",
-	})
 	viper.SetDefault("token_file", home+"/.dexy-token.yaml")
-
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 	}
-	viper.Set("auth.callback_url", fmt.Sprintf("http://%s:%d/oauth2/callback",
-		viper.GetString("auth.callback_host"),
-		viper.GetInt("auth.callback_port")))
+
+	if viper.IsSet("callback_url") {
+		viper.Set("callback_url", fmt.Sprintf("http://%s:%d/oauth2/callback", viper.GetString("callback_host"), viper.GetInt("callback_port")))
+	}
+
+	for _, provider := range destinations {
+		if ok, err := provider.(providers.IProvider).IsSetCorrectly(); err == nil && ok {
+			log.Printf("%+v", provider)
+			if err := viper.Unmarshal(&provider); err != nil {
+				log.Printf("Could not unmarshal config %+v", err)
+			}
+
+			log.Printf("%+v", provider)
+
+		}
+
+	}
+
 }
