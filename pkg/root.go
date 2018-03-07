@@ -77,7 +77,7 @@ var RootCmd = &cobra.Command{
 			ClientSecret: C.ClientSecret,
 			RedirectURL:  C.CallbackURL,
 			Endpoint:     provider.Endpoint(),
-			Scopes:       append([]string{oidc.ScopeOpenID, "email", "profile"}, viper.GetStringSlice("auth.scopes")...),
+			Scopes:       append([]string{oidc.ScopeOpenID, "email", "profile"}, selectedProvider.AdditionalScopes()...),
 		}
 
 		tokenChan := make(chan *returnToken)
@@ -88,15 +88,13 @@ var RootCmd = &cobra.Command{
 		}
 
 		var authCodeURL string = oauth2Config.AuthCodeURL("")
-		if prov, ok := C.Provider.(providers.IProvider); ok {
-			requestParams, err := prov.BuildRequestParameters()
-			if err != nil {
-				log.Println("Error calling BuildRequestParameters %v", err)
-			}
-			log.Println(requestParams)
-			authCodeURL += requestParams
-
+		requestParams, err := selectedProvider.BuildRequestParameters()
+		if err != nil {
+			log.Println("Error calling BuildRequestParameters %v", err)
 		}
+		log.Println(requestParams)
+		authCodeURL += requestParams
+
 		err = browser.OpenURL(authCodeURL)
 		if err != nil {
 			log.Fatalf("error while opening new web browser %v", err)
@@ -160,7 +158,9 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 		// handle error
 	}
 
-	// C.Finalise()
+	if err := selectedProvider.Finalise(); err != nil {
+		log.Println("Unable to finalise %s: %v", selectedProvider.Name(), err)
+	}
 
 	ret := &returnToken{
 		AccessToken: rawIDToken,
@@ -193,11 +193,11 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dexy.yaml)")
 }
 
+var selectedProvider providers.IProvider
 var C providers.Config
 
 var destinations = []providers.IProvider{
-	providers.BaseProvider{},
-	providers.GoogleApps{},
+	&providers.GoogleApps{},
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -230,13 +230,16 @@ func initConfig() {
 		viper.Set("callback_url", fmt.Sprintf("http://%s:%d/oauth2/callback", viper.GetString("callback_host"), viper.GetInt("callback_port")))
 	}
 
-	for _, provider := range destinations {
-		if ok, err := provider.IsSetCorrectly(); err == nil && ok {
-			if err := viper.Unmarshal(&C); err != nil {
-				log.Printf("Could not unmarshal config %+v", err)
-			}
+	if err := viper.Unmarshal(&C); err != nil {
+		log.Printf("Could not unmarshal config %+v", err)
+	}
 
-			log.Printf("%+v", C)
+	for _, provider := range destinations {
+		providerConfig := viper.Get(provider.Name()).(map[string]interface{})
+		if ok, err := provider.Validate(providerConfig); err == nil && ok {
+			selectedProvider = provider
+			log.Printf("%+v", selectedProvider)
+			break
 		}
 
 	}
