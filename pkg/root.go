@@ -125,7 +125,6 @@ type web struct {
 	verifier  *oidc.IDTokenVerifier
 	cfg       oauth2.Config
 	tokenChan chan *returnToken
-	provider  *string
 }
 
 func (s *web) Serve() {
@@ -146,19 +145,25 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Extract the ID Token from OAuth2 token.
-	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	test := oauth2Token.Extra("id_token")
+	test["Test"] = 1234
+	rawIDToken, ok := test.(string)
 	if !ok {
 		// handle missing token
 	}
 
 	// Parse and verify ID Token payload.
 	idToken, err := s.verifier.Verify(ctx, rawIDToken)
+
+	fmt.Printf("%+v\n", idToken)
 	if err != nil {
 		fmt.Println(err.Error())
 		// handle error
 	}
-
-	if err := selectedProvider.Finalise(); err != nil {
+	client := s.cfg.Client(ctx, oauth2Token)
+	if err := selectedProvider.Finalise(client, &providers.FinaliseMetadata{
+		Subject: idToken.Subject,
+	}); err != nil {
 		log.Println("Unable to finalise %s: %v", selectedProvider.Name(), err)
 	}
 

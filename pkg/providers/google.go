@@ -3,6 +3,9 @@ package providers
 import (
 	"fmt"
 	"log"
+	"net/http"
+
+	"google.golang.org/api/admin/directory/v1"
 )
 
 type GoogleApps struct {
@@ -29,8 +32,17 @@ func (g *GoogleApps) AdditionalScopes() []string {
 func (g *GoogleApps) BuildRequestParameters() (string, error) {
 	return fmt.Sprintf("&hd=%s", g.HD), nil
 }
-func (g *GoogleApps) Finalise() error {
-	log.Println("B")
+func (g *GoogleApps) Finalise(c *http.Client, m *FinaliseMetadata) error {
+	srv, err := admin.New(c)
+	if err != nil {
+		log.Fatalf("Unable to retrieve directory Client %v", err)
+	}
+
+	r, err := srv.Groups.List().UserKey(m.Subject).Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve groups in domain.", err)
+	}
+	fmt.Println(r.Groups)
 	return nil
 }
 
