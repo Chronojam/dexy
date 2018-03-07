@@ -73,7 +73,7 @@ var RootCmd = &cobra.Command{
 		}
 		scopes := []string{oidc.ScopeOpenID}
 		scopes = append(scopes, viper.GetStringSlice("auth.scopes")...)
-		viper.GetStringSlice("auth.scopes")
+		fmt.Printf("%s", scopes)
 		oauth2Config := oauth2.Config{
 			ClientID:     viper.GetString("auth.client_id"),
 			ClientSecret: viper.GetString("auth.client_secret"),
