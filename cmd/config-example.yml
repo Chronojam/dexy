@@ -5,3 +5,6 @@ auth:
   # This will generate a callbackurl like http://localhost:10111/oauth2/callback
   client_id: "dexy"
   client_secret: "dexy-secret"
+  scopes:
+  - email
+  - groups

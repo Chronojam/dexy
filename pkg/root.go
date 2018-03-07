@@ -71,12 +71,15 @@ var RootCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("error while creating new oidc provider %v", err)
 		}
+		scopes := []string{oidc.ScopeOpenID}
+		scopes = append(scopes, viper.GetStringSlice("auth.scopes")...)
+		viper.GetStringSlice("auth.scopes")
 		oauth2Config := oauth2.Config{
 			ClientID:     viper.GetString("auth.client_id"),
 			ClientSecret: viper.GetString("auth.client_secret"),
 			RedirectURL:  viper.GetString("auth.callback_url"),
 			Endpoint:     provider.Endpoint(),
-			Scopes:       []string{oidc.ScopeOpenID, "groups", "email"},
+			Scopes:       scopes,
 		}
 
 		tokenChan := make(chan *returnToken)
