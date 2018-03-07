@@ -1,9 +1,12 @@
 package providers
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 type GoogleApps struct {
-	BaseProvider
+	IProvider
 	HD string
 }
 
@@ -12,6 +15,11 @@ func (g GoogleApps) IsSetCorrectly() (bool, error) {
 	return true, nil
 }
 
+func (g GoogleApps) BuildRequestParameters() (string, error) {
+	log.Println("GAPPS brp")
+
+	return fmt.Sprintf("&hd=%s", g.HD), nil
+}
 func (g GoogleApps) Finalise() error {
 	log.Println("B")
 	return nil

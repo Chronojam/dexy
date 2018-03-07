@@ -73,26 +73,30 @@ var RootCmd = &cobra.Command{
 			log.Fatalf("error while creating new oidc provider %v", err)
 		}
 		oauth2Config := oauth2.Config{
-			ClientID:     C.GetClientID(),
-			ClientSecret: C.GetClientSecret(), //viper.GetString("client_secret"),
-			RedirectURL:  C.GetCallbackURL(),  //viper.GetString("callback_url"),
+			ClientID:     C.ClientID,
+			ClientSecret: C.ClientSecret,
+			RedirectURL:  C.CallbackURL,
 			Endpoint:     provider.Endpoint(),
 			Scopes:       append([]string{oidc.ScopeOpenID, "email", "profile"}, viper.GetStringSlice("auth.scopes")...),
 		}
 
 		tokenChan := make(chan *returnToken)
 		w := &web{
-			verifier:  provider.Verifier(&oidc.Config{ClientID: C.GetClientID()}),
+			verifier:  provider.Verifier(&oidc.Config{ClientID: C.ClientID}),
 			cfg:       oauth2Config,
 			tokenChan: tokenChan,
 		}
 
 		var authCodeURL string = oauth2Config.AuthCodeURL("")
+		if prov, ok := C.Provider.(providers.IProvider); ok {
+			requestParams, err := prov.BuildRequestParameters()
+			if err != nil {
+				log.Println("Error calling BuildRequestParameters %v", err)
+			}
+			log.Println(requestParams)
+			authCodeURL += requestParams
 
-		// if googleApps, ok := C.(providers.GoogleApps); ok {
-		// 	authCodeURL += fmt.Sprintf("&hd=%s", googleApps.HD)
-		// }
-
+		}
 		err = browser.OpenURL(authCodeURL)
 		if err != nil {
 			log.Fatalf("error while opening new web browser %v", err)
@@ -227,16 +231,13 @@ func initConfig() {
 	}
 
 	for _, provider := range destinations {
-		if ok, err := provider.(providers.IProvider).IsSetCorrectly(); err == nil && ok {
-			log.Printf("%+v", provider)
-			if err := viper.Unmarshal(&provider); err != nil {
+		if ok, err := provider.IsSetCorrectly(); err == nil && ok {
+			if err := viper.Unmarshal(&C); err != nil {
 				log.Printf("Could not unmarshal config %+v", err)
 			}
 
-			log.Printf("%+v", provider)
-
+			log.Printf("%+v", C)
 		}
 
 	}
-
 }

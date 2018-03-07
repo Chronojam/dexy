@@ -5,42 +5,28 @@ import (
 )
 
 type Config struct {
-	BaseProvider
-	GoogleApps
+	ClientID     string `mapstructure:"client_id"`
+	ClientSecret string `mapstructure:"client_secret"`
+	CallbackURL  string `mapstructure:"callback_url"`
+
+	Provider interface{} `mapstructure:"provider"`
 }
 
 type IProvider interface {
 	Finalise() error
+	BuildRequestParameters() (string, error)
 	IsSetCorrectly() (bool, error)
-
-	GetClientID() string
-	GetClientSecret() string
-	GetCallbackURL() string
-}
-
-func (cmd IProvider) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	if err := unmarshal(&cmd); err != nil {
-		return err
-	}
-	// Simply overwrite unmarshalled data PoC
-	*cmd = []string{"overwritten", "values"}
-	return nil
 }
 
 type BaseProvider struct {
-	ClientID     string `mapstructure:"client_id"`
-	ClientSecret string `mapstructure:"client_secret"`
-	CallbackURL  string `mapstructure:"callback_url"`
 }
-
-func (provider BaseProvider) GetCallbackURL() string {
-	return provider.CallbackURL
-}
-func (provider BaseProvider) GetClientID() string     { return provider.ClientID }
-func (provider BaseProvider) GetClientSecret() string { return provider.ClientSecret }
 
 func (provider BaseProvider) IsSetCorrectly() (bool, error) {
 	return false, nil
+}
+
+func (provider BaseProvider) BuildRequestParameters() (string, error) {
+	return "", nil
 }
 
 func (provider BaseProvider) Finalise() error {
