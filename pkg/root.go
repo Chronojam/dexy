@@ -73,7 +73,6 @@ var RootCmd = &cobra.Command{
 		}
 		scopes := []string{oidc.ScopeOpenID}
 		scopes = append(scopes, viper.GetStringSlice("auth.scopes")...)
-		fmt.Printf("%s", scopes)
 		oauth2Config := oauth2.Config{
 			ClientID:     viper.GetString("auth.client_id"),
 			ClientSecret: viper.GetString("auth.client_secret"),
@@ -88,12 +87,12 @@ var RootCmd = &cobra.Command{
 			cfg:       oauth2Config,
 			tokenChan: tokenChan,
 		}
+		go w.Serve()
 
 		err = browser.OpenURL(oauth2Config.AuthCodeURL(""))
 		if err != nil {
 			log.Fatalf("error while opening new web browser %v", err)
 		}
-		go w.Serve()
 		tok := <-tokenChan
 
 		b, err = json.Marshal(tok)
@@ -127,7 +126,6 @@ func (s *web) Serve() {
 	oauth := chi.NewRouter()
 	oauth.Get("/callback", s.oauth2Callback)
 	r.Mount("/oauth2", oauth)
-
 	http.ListenAndServe(":10111", r)
 }
 
@@ -143,6 +141,7 @@ func (s *web) oauth2Callback(w http.ResponseWriter, r *http.Request) {
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
 		// handle missing token
+		log.Fatalf("missing id_token")
 	}
 
 	// Parse and verify ID Token payload.
@@ -203,13 +202,6 @@ func initConfig() {
 	}
 	viper.SetEnvPrefix("dexy")
 	viper.AutomaticEnv() // read in environment variables that match
-	viper.SetDefault("auth", map[string]interface{}{
-		"dex_host":      "http://localhost:9999",
-		"callback_host": "localhost",
-		"callback_port": 10111,
-		"client_id":     "dexy",
-		"client_secret": "dexy",
-	})
 	viper.SetDefault("token_file", home+"/.dexy-token.yaml")
 
 	// If a config file is found, read it in.
