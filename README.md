@@ -9,13 +9,13 @@ Dexy is a simple command line tool to do 3LO authentication with an external pro
 **Linux** 
 
 ```
-wget https://github.com/Chronojam/dexy/releases/download/v1.0.0/linux-amd64 -O dexy && sudo mv dexy /usr/local/bin/dexy
+wget https://github.com/Chronojam/dexy/releases/download/v1.0.6/linux-amd64 -O dexy && sudo mv dexy /usr/local/bin/dexy
 ``` 
 
 **MacOSX** 
 
 ```
-wget https://github.com/Chronojam/dexy/releases/download/v1.0.0/darwin-amd64 -O dexy && sudo mv dexy /usr/local/bin/dexy
+wget https://github.com/Chronojam/dexy/releases/download/v1.0.6/darwin-amd64 -O dexy && sudo mv dexy /usr/local/bin/dexy
 ``` 
 
 **Windows** 
