@@ -1,3 +1,5 @@
+[DEPRECATED]: This repo has now moved to gitlab.com/chronojam/dexy
+
 **Dexy**
 ----------
 **Introduction**    
